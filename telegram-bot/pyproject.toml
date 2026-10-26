@@ -9,6 +9,7 @@ description = "A Telegram bot starter built with aiogram 3"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp>=3.9,<4",
     "aiogram>=3.13,<4",
     "python-dotenv>=1.0,<2",
 ]

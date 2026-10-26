@@ -8,6 +8,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -1717,6 +1718,26 @@ async def show_menu_for_unknown_message(message: Message) -> None:
     )
 
 
+async def healthcheck(_request: web.Request) -> web.Response:
+    return web.Response(text="OK")
+
+
+async def start_health_server() -> web.AppRunner:
+    port = int(os.environ.get("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", healthcheck)
+    app.router.add_get("/health", healthcheck)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host="0.0.0.0", port=port)
+    await site.start()
+    logging.getLogger(__name__).info(
+        "Health server listening on 0.0.0.0:%s", port
+    )
+    return runner
+
+
 async def main() -> None:
     load_dotenv()
     settings = Settings.from_environment()
@@ -1735,7 +1756,11 @@ async def main() -> None:
     dispatcher.include_router(router)
 
     logging.getLogger(__name__).info("Starting Telegram shift-income bot")
-    await dispatcher.start_polling(bot)
+    web_runner = await start_health_server()
+    try:
+        await dispatcher.start_polling(bot)
+    finally:
+        await web_runner.cleanup()
 
 
 if __name__ == "__main__":
